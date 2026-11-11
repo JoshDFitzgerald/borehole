@@ -93,16 +93,66 @@ function startHole(){
 function startRound(auto,keep){
   const q=keep||pickNext(S.pick);S.qid=q.id;P=prepQ(q);S.phase="play";R.mode="idle";
   renderCard();renderPips();makeLines();
-  const d=$("dock");d.classList.remove("away");$("guess").value="";$("guess").disabled=false;
+  const d=$("dock");d.classList.remove("away");$("guess").value="";$("guess").disabled=false;resetGuess();
   resetTimer();if(auto){startTimer();setTimeout(()=>$("guess").focus({preventScroll:true}),50);}
   Mole.onPrompt(S.round===0&&S.mode==="classic");
 }
+/* ---------- guessing: as many tries as the clock allows ----------
+   A guess on the list drills. A near miss asks "Did you mean …?". Anything else says try again,
+   and the timer keeps running. Only running out of time (or giving up) makes a dry hole. */
+let G={misses:[],pend:null};
+function resetGuess(){G={misses:[],pend:null};renderFb("");const g=$("guess");g.classList.remove("bad");g.placeholder="Type an answer";}
+function renderFb(msg){
+  let h=msg||"";
+  if(G.misses.length){const show=G.misses.slice(-5);h+=`<div class="tried"><span>Tried</span>${show.map(m=>`<s>${esc(m)}</s>`).join("")}${G.misses.length>5?`<span>+${G.misses.length-5}</span>`:""}<button type="button" class="giveup" id="giveUp">Give up</button></div>`;}
+  $("fb").innerHTML=h;
+  const keep=e=>e.preventDefault();/* keep the keyboard up while tapping these */
+  const y=$("fbYes"),n=$("fbNo"),gu=$("giveUp");
+  if(y){y.onmousedown=keep;y.onclick=acceptPend;}
+  if(n){n.onmousedown=keep;n.onclick=rejectPend;}
+  if(gu){gu.onmousedown=keep;gu.onclick=()=>{if(S.phase!=="play")return;Snd.click();finish(-1,"",{gaveUp:true});};}
+}
 function submit(raw,timeUp){
   if(S.phase!=="play")return;raw=(raw||"").trim();
-  if(!raw&&!timeUp){const i=$("guess");i.classList.remove("nudge");void i.offsetWidth;i.classList.add("nudge");return;}
-  Snd.init();
-  const idx=raw?matchQ(P,raw):-1,it=idx>=0?P.list[idx]:null;
-  const res={q:P.q,grp:P.grp,raw,idx,tier:it?it.tier:-1,name:it?it.name:null,rank:it?it.rank:0,n:P.n,pts:it?TIERS[it.tier].pts:0,timeUp:!raw,from:S.depth};
+  if(timeUp)return timeUpFinish(raw);
+  if(G.pend&&(!raw||norm(raw)===norm(G.pend.raw)))return acceptPend();
+  if(!raw){const i=$("guess");i.classList.remove("nudge");void i.offsetWidth;i.classList.add("nudge");return;}
+  Snd.init();startTimer();
+  if(G.misses.some(m=>norm(m)===norm(raw)))return miss(raw,"dup");
+  const j=judge(P,raw);
+  if(j.i>=0&&j.sure)return finish(j.i,raw);
+  if(j.i>=0)return ask(j.i,raw);
+  miss(raw,j.vague?"vague":j.known?"known":"miss");
+}
+function ask(i,raw){
+  G.pend={i,raw};Snd.ask();Mole.onSuggest();
+  renderFb(`<div class="fbm ask" role="alert"><span class="msg">Did you mean <b>${esc(P.list[i].name)}</b>?</span><button type="button" class="mini" id="fbYes">Yes</button><button type="button" class="mini alt" id="fbNo">No</button></div>`);
+  const g=$("guess");g.classList.remove("bad");g.focus({preventScroll:true});g.select();
+}
+function acceptPend(){const p=G.pend;if(!p||S.phase!=="play")return;Snd.click();finish(p.i,p.raw,{asked:true});}
+function rejectPend(){const p=G.pend;if(!p||S.phase!=="play")return;G.pend=null;miss(p.raw,"miss");}
+function miss(raw,kind){
+  G.pend=null;
+  if(kind==="miss"||kind==="known")G.misses.push(raw);
+  const q=`<q>${esc(raw)}</q>`;
+  const txt=kind==="vague"?`${q} could be more than one answer. <b>Be more specific.</b>`
+    :kind==="known"?`${q} is real, but it isn't on this list. <b>Try again.</b>`
+    :kind==="dup"?`You already tried ${q}. <b>Try something else.</b>`
+    :`${q} isn't on the list. <b>Try again.</b>`;
+  renderFb(`<div class="fbm miss" role="alert"><span class="ic" aria-hidden="true">✕</span><span class="msg">${txt}</span></div>`);
+  Snd.nope();Mole.onMiss(G.misses.length,kind==="dup"?"miss":kind);R.shake=Math.max(R.shake,1.4);
+  const g=$("guess");g.value="";g.placeholder="Try another answer";g.classList.remove("nudge");void g.offsetWidth;g.classList.add("nudge","bad");g.focus({preventScroll:true});
+}
+function timeUpFinish(raw){
+  let i=-1,r="";
+  if(raw){const j=judge(P,raw);if(j.i>=0){i=j.i;r=raw;}}
+  if(i<0&&G.pend){i=G.pend.i;r=G.pend.raw;}/* the clock beat the Yes button: count it */
+  if(i<0&&raw&&!G.misses.some(m=>norm(m)===norm(raw)))G.misses.push(raw);
+  finish(i,r,{asked:i>=0});
+}
+function finish(i,raw,o){
+  o=o||{};const it=i>=0?P.list[i]:null;const misses=G.misses.slice();G.pend=null;
+  const res={q:P.q,grp:P.grp,raw,idx:i,tier:it?it.tier:-1,name:it?it.name:null,rank:it?it.rank:0,n:P.n,pts:it?TIERS[it.tier].pts:0,timeUp:!it&&!o.gaveUp,gaveUp:!!o.gaveUp,asked:!!(o.asked&&it&&norm(raw)!==norm(it.name)),misses,from:S.depth};
   dive(res);
 }
 async function dive(res){
@@ -157,10 +207,12 @@ function flashScreen(col){const f=$("flash");f.style.background=col;f.classList.
 function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
 function showReveal(res){
   const col=res.tier>=0?TIERS[res.tier].col:"var(--miss)";
-  const stamp=res.tier>=0?TIERS[res.tier].name:res.timeUp?"Time's up":"Dry hole";
+  const stamp=res.tier>=0?TIERS[res.tier].name:"Dry hole";
+  const ms=res.misses||[],tries=ms.length?` · on try ${ms.length+1}`:"";
+  const tried=ms.length?`Tried ${ms.map(m=>"“"+esc(m)+"”").join(", ")}. ${ms.length===1?"It wasn't":"None of them were"} on the list.`:"";
   const head=res.tier>=0
-    ?`<b>${esc(res.name)}</b><small><strong>+${res.pts} pts · drilled ${fmt(res.pts*MPP)} m</strong></small><small>${res.tier===4?`The only Diamond on this list of ${res.n}`:`${ordinal(res.rank)} most common of ${res.n} answers`}</small>`
-    :`<b>${res.raw?esc(res.raw):"No answer"}</b><small>${res.raw?"Not on the list. The drill didn't move.":"The drill didn't move."}${S.mode==="endless"?` ${S.bits} bit${S.bits===1?"":"s"} left.`:""}</small>`;
+    ?`<b>${esc(res.name)}</b><small><strong>+${res.pts} pts · drilled ${fmt(res.pts*MPP)} m${tries}</strong></small>${res.asked?`<small>You typed “${esc(res.raw)}”. Close enough.</small>`:""}<small>${res.tier===4?`The only Diamond on this list of ${res.n}`:`${ordinal(res.rank)} most common of ${res.n} answers`}</small>`
+    :`<b>${res.gaveUp?"Gave up":"Time's up"}</b><small>${tried||"No answer, so the drill didn't move."}${tried?" The drill didn't move.":""}${S.mode==="endless"?` ${S.bits} bit${S.bits===1?"":"s"} left.`:""}</small>`;
   const chip=x=>`<span class="chip${x.rank-1===res.idx?" mine":""}">${esc(x.name)}</span>`;
   const rows=TIERS.map((t,ti)=>{const items=P.list.filter(x=>x.tier===ti);const CAP=36;
     let body=items.map(chip).join("");
@@ -188,7 +240,7 @@ function showEnd(){
   const passed=LANDMARKS.filter(l=>l.m<=S.depth);const deepest=passed[passed.length-1];const nextL=LANDMARKS.find(l=>l.m>S.depth);
   const glyph=["▁","▃","▅","▇","◆"];
   const share=`Borehole · ${fmt(S.depth)} m · ${fmt(S.score)} pts\n${S.results.map(r=>r.tier>=0?glyph[r.tier]:"·").join(" ")}${deepest?`\nDeeper than ${deepest.s}`:""}`;
-  const rec=S.results.map((r,i)=>`<div style="--tc:${r.tier>=0?TIERS[r.tier].col:"var(--miss)"}"><span>${i+1}. ${esc(r.q)}<small>${r.tier>=0?`${esc(r.name)} · ${TIERS[r.tier].name}`:r.raw?`${esc(r.raw)} · dry hole`:"Time's up"}</small></span><span>+${r.pts}</span></div>`).join("");
+  const rec=S.results.map((r,i)=>`<div style="--tc:${r.tier>=0?TIERS[r.tier].col:"var(--miss)"}"><span>${i+1}. ${esc(r.q)}<small>${r.tier>=0?`${esc(r.name)} · ${TIERS[r.tier].name}`:`Dry hole · ${r.gaveUp?"gave up":"time ran out"}`}</small></span><span>+${r.pts}</span></div>`).join("");
   $("sheetIn").innerHTML=`<div class="rowx"><span class="eb2">${S.mode==="endless"?"Out of drill bits":"Hole complete"}</span><span class="eb2">${newBest?"New deepest hole on this device":"Deepest on this device: "+fmt(Math.max(best,S.depth))+" m"}</span></div>
     <p class="big">${fmt(S.depth)}<small> m down</small></p>
     <div class="stats"><div><span>Score</span><b>${fmt(S.score)}</b></div><div><span>Rock temp</span><b>${Math.round(tempAt(S.depth))}°C</b></div><div><span>Layer</span><b>${STRATA[stratumIdx(S.depth)].n}</b></div><div><span>Diamonds</span><b>${S.results.filter(r=>r.tier===4).length}</b></div></div>
@@ -211,11 +263,11 @@ async function newHole(){
 /* ---------- wiring ---------- */
 $("f").addEventListener("submit",e=>{e.preventDefault();submit($("guess").value,false);});
 $("guess").addEventListener("focus",()=>{Snd.init();startTimer();});
-$("guess").addEventListener("input",()=>{startTimer();Mole.onType();});
+$("guess").addEventListener("input",()=>{startTimer();Mole.onType();$("guess").classList.remove("bad");});
 $("helpBtn").onclick=()=>{$("modal").hidden=false;$("closeHelp").focus();};
 $("closeHelp").onclick=()=>{$("modal").hidden=true;};
 $("modal").addEventListener("click",e=>{if(e.target===$("modal"))$("modal").hidden=true;});
-addEventListener("keydown",e=>{if(e.key==="Escape")$("modal").hidden=true;});
+addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(!$("modal").hidden){$("modal").hidden=true;return;}if(G.pend)rejectPend();});
 function setSound(on){Snd.setOn(on);store("bh-sound",on?"1":"0");$("sndBtn").setAttribute("aria-pressed",String(on));$("sndBtn").setAttribute("aria-label",on?"Sound on":"Sound off");$("sndOn").style.display=on?"":"none";$("sndOff").style.display=on?"none":"";}
 $("sndBtn").onclick=()=>{Snd.init();setSound(!Snd.on);};
 cv.addEventListener("pointerdown",e=>{if(Mole.hit(e.clientX,e.clientY)){Snd.init();Mole.onPoke();}});
@@ -236,6 +288,7 @@ function boot(data){
     else startHole();
   }else startHole();
   requestAnimationFrame(t=>{lastT=t;loop(t);});
+  (window.requestIdleCallback||(f=>setTimeout(f,1200)))(()=>anyKeys());
 }
 window.claude?.hot?.snapshot?.(()=>({S}));
 window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});

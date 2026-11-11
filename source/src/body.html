@@ -19,9 +19,10 @@
 <div class="toast" id="toast" role="status"></div>
 <div class="bubble" id="bubble" role="status"><span class="who">Digby</span><span id="bubbleTxt"></span></div>
 <div class="dock" id="dock">
+  <div class="fb" id="fb" aria-live="assertive"></div>
   <form id="f" autocomplete="off">
     <div class="timer" id="timer"><svg width="50" height="50" viewBox="0 0 50 50" aria-hidden="true"><circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="ring" cx="25" cy="25" r="21"/></svg><span id="secs" aria-label="seconds left">25</span></div>
-    <input type="text" id="guess" aria-label="Your answer" placeholder="Type one answer" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+    <input type="text" id="guess" aria-label="Your answer" placeholder="Type an answer" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
     <button class="btn" type="submit">Drill</button>
   </form>
 </div>
@@ -30,9 +31,11 @@
   <h3 id="mh">How to drill</h3>
   <ul>
     <li>Every prompt has a hidden list of answers, ranked by how often people give them.</li>
-    <li>You get one answer and 25 seconds. Your drill bores down from wherever you are, to the line your answer belongs to.</li>
+    <li>You have 25 seconds. Your first answer that's on the list sends the drill down, from wherever you are, to the line that answer belongs to.</li>
+    <li>Guess as often as you like. A wrong guess just says try again, and the clock keeps running.</li>
+    <li>Spelling doesn't have to be perfect. If you're close, or you said it a different way ("Henry the Eighth"), you'll be asked "Did you mean…?"</li>
     <li>Common answers stop shallow. The single rarest answer on each list is the Diamond.</li>
-    <li>An answer that isn't on the list is a dry hole: the drill doesn't move.</li>
+    <li>If time runs out before you hit the list, it's a dry hole: the drill doesn't move.</li>
     <li>Seven prompts make a hole. After that you can keep drilling in endless mode until you burn through three drill bits.</li>
   </ul>
   <div class="ladder" id="ladder"></div>

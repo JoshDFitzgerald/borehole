@@ -62,6 +62,8 @@ const Snd={
     if(tier===4){for(let i=0;i<10;i++)this.tone(2400+Math.random()*2400,.18,{vol:.03,delay:.45+i*.05});}
   },
   dry(){this.tone(320,.42,{type:"triangle",vol:.2,f2:120});this.tone(210,.6,{type:"triangle",vol:.18,f2:70,delay:.2});this.burst(.5,{freq:300,vol:.12,delay:.1});},
+  nope(){this.tone(196,.13,{type:"square",vol:.07,f2:150});this.tone(147,.2,{type:"square",vol:.07,f2:110,delay:.12});this.burst(.12,{freq:420,vol:.08});},
+  ask(){this.tone(660,.1,{type:"triangle",vol:.09});this.tone(880,.16,{type:"triangle",vol:.09,delay:.09});},
   blip(){if(!this.ctx||!this.on)return;this.tone(560+Math.random()*520,.045,{type:"square",vol:.025});},
   squeak(){this.tone(1100,.12,{vol:.12,f2:1900});this.tone(1500,.1,{vol:.08,f2:2300,delay:.1});},
   tick(low){this.tone(low?1500:1100,.035,{type:"square",vol:.04});},

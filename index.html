@@ -90,6 +90,26 @@ button{font:inherit;color:inherit;cursor:pointer}
   padding-top:28px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .dock.away{transform:translateY(140%)}
 .dock form{max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center}
+/* guess feedback: try again / did you mean */
+.fb{max-width:640px;margin:0 auto 9px;display:flex;flex-direction:column;gap:7px}
+.fb:empty{display:none}
+.fbm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 10px 9px 12px;border-radius:12px;background:var(--panel-solid);border:1px solid var(--line);font:500 .92rem/1.35 var(--body);box-shadow:0 10px 26px rgba(0,0,0,.4);animation:fbin .24s cubic-bezier(.2,.9,.3,1)}
+.fbm .msg{flex:1;min-width:11em}
+.fbm q{font-family:var(--mono);font-size:.9em;quotes:"“" "”"}
+.fbm.miss{border-color:rgba(242,123,127,.6)}
+.fbm.miss b{color:var(--miss);white-space:nowrap}
+.fbm .ic{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--miss);color:#2a1012;font:800 .78rem var(--body);flex:none}
+.fbm.ask{border-color:rgba(245,185,65,.7);box-shadow:0 10px 26px rgba(0,0,0,.4),0 0 0 3px rgba(245,185,65,.12)}
+.fbm.ask b{color:var(--lamp)}
+.fbm .mini{border:0;border-radius:9px;padding:8px 16px;font:700 .88rem var(--body);background:var(--lamp);color:var(--on-lamp);cursor:pointer;box-shadow:0 3px 0 #9a6a12}
+.fbm .mini:active{transform:translateY(2px);box-shadow:0 1px 0 #9a6a12}
+.fbm .mini.alt{background:transparent;color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.tried{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap;font:500 .8rem var(--mono);color:var(--muted);padding:0 4px}
+.tried>span:first-child{font:600 .68rem var(--body);letter-spacing:.14em;text-transform:uppercase}
+.tried s{text-decoration-color:var(--miss);text-decoration-thickness:2px;color:#cdbfb2}
+.tried .giveup{margin-left:auto;background:none;border:0;color:var(--muted);font:600 .8rem var(--body);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px 2px}
+.tried .giveup:hover{color:var(--ink)}
+@keyframes fbin{from{opacity:0;transform:translateY(8px)}}
 .timer{position:relative;width:50px;height:50px;flex:none}
 .timer svg{transform:rotate(-90deg)}
 .timer circle{fill:none;stroke-width:4}
@@ -101,6 +121,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .dock input{flex:1;min-width:0;font:500 1.05rem var(--mono);padding:13px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel-solid);color:var(--ink)}
 .dock input:focus{outline:none;border-color:var(--lamp);box-shadow:0 0 0 4px rgba(245,185,65,.15)}
 .dock input.nudge{animation:nudge .35s}
+.dock input.bad{border-color:var(--miss);box-shadow:0 0 0 4px rgba(242,123,127,.15)}
 @keyframes nudge{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .btn{border:0;border-radius:12px;padding:13px 20px;font:800 1.15rem var(--display);letter-spacing:.12em;text-transform:uppercase;background:var(--lamp);color:var(--on-lamp);white-space:nowrap;box-shadow:0 4px 0 #9a6a12}
 .btn:active{transform:translateY(2px);box-shadow:0 2px 0 #9a6a12}
@@ -168,7 +189,7 @@ button{font:inherit;color:inherit;cursor:pointer}
   .stamp{font-size:1.35rem}
 }
 @media (max-width:380px){.hud .gauge .s{display:none}}
-@media (prefers-reduced-motion:reduce){.card,.dock,.sheet,.bubble,.toast{transition:none}.stamp,.banner.go,.flash.go,.pip.now,.card.enter{animation:none}}
+@media (prefers-reduced-motion:reduce){.fbm{animation:none}.card,.dock,.sheet,.bubble,.toast{transition:none}.stamp,.banner.go,.flash.go,.pip.now,.card.enter{animation:none}}
 
 </style>
 </head>
@@ -194,9 +215,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 <div class="toast" id="toast" role="status"></div>
 <div class="bubble" id="bubble" role="status"><span class="who">Digby</span><span id="bubbleTxt"></span></div>
 <div class="dock" id="dock">
+  <div class="fb" id="fb" aria-live="assertive"></div>
   <form id="f" autocomplete="off">
     <div class="timer" id="timer"><svg width="50" height="50" viewBox="0 0 50 50" aria-hidden="true"><circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="ring" cx="25" cy="25" r="21"/></svg><span id="secs" aria-label="seconds left">25</span></div>
-    <input type="text" id="guess" aria-label="Your answer" placeholder="Type one answer" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+    <input type="text" id="guess" aria-label="Your answer" placeholder="Type an answer" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
     <button class="btn" type="submit">Drill</button>
   </form>
 </div>
@@ -205,9 +227,11 @@ button{font:inherit;color:inherit;cursor:pointer}
   <h3 id="mh">How to drill</h3>
   <ul>
     <li>Every prompt has a hidden list of answers, ranked by how often people give them.</li>
-    <li>You get one answer and 25 seconds. Your drill bores down from wherever you are, to the line your answer belongs to.</li>
+    <li>You have 25 seconds. Your first answer that's on the list sends the drill down, from wherever you are, to the line that answer belongs to.</li>
+    <li>Guess as often as you like. A wrong guess just says try again, and the clock keeps running.</li>
+    <li>Spelling doesn't have to be perfect. If you're close, or you said it a different way ("Henry the Eighth"), you'll be asked "Did you mean…?"</li>
     <li>Common answers stop shallow. The single rarest answer on each list is the Diamond.</li>
-    <li>An answer that isn't on the list is a dry hole: the drill doesn't move.</li>
+    <li>If time runs out before you hit the list, it's a dry hole: the drill doesn't move.</li>
     <li>Seven prompts make a hole. After that you can keep drilling in endless mode until you burn through three drill bits.</li>
   </ul>
   <div class="ladder" id="ladder"></div>
@@ -256,7 +280,7 @@ function addQ(fam,q,sub,items,opts){
   if(QSEEN.has(q)){DUPQ.push(q);return;}
   if(items.length<min){SKIPPED.push(q+" ("+items.length+")");return;}
   QSEEN.add(q);
-  BANK.push({id:hashStr(q).toString(36),fam,grp:opts.grp||CUR_GRP,q,sub:sub||"",items,surname:!!opts.surname});
+  BANK.push({id:hashStr(q).toString(36),fam,grp:opts.grp||CUR_GRP,q,sub:sub||"",items,surname:!!opts.surname,ds:opts.ds||null});
 }
 /* standalone list */
 function L(fam,q,sub,body,opts){addQ(fam,q,sub,parseItems(body),opts);}
@@ -265,21 +289,74 @@ function DS(name,body,opts){DATASETS[name]={items:parseItems(body),opts:opts||{}
 /* derived prompt: filter a dataset by tag expression, e.g. "eu", "af&landlocked", "es|pt" */
 function T(fam,ds,q,sub,filter,opts){const d=DATASETS[ds];if(!d)throw new Error("no dataset "+ds);let items=d.items.filter(tagf(filter));
   if(opts&&opts.demote){const dm=opts.demote.map(n=>n.toLowerCase());items=items.filter(it=>!dm.includes(it.name.toLowerCase())).concat(dm.map(n=>items.find(it=>it.name.toLowerCase()===n)).filter(Boolean));}
-  addQ(fam,q,sub,items,Object.assign({},d.opts,opts||{}));}
+  addQ(fam,q,sub,items,Object.assign({},d.opts,opts||{},{ds}));}
 function ALL(fam,ds,q,sub,opts){T(fam,ds,q,sub,()=>true,opts);}
 /* one prompt per starting letter that has enough answers */
 function LETTERS(fam,ds,qf,sub,filter,opts){
   const d=DATASETS[ds];if(!d)throw new Error("no dataset "+ds);
   const pool=filter?d.items.filter(tagf(filter)):d.items;const by={};const min=(opts&&opts.min)||8;
   pool.forEach(it=>{const c=norm(it.name).charAt(0).toUpperCase();if(/[A-Z]/.test(c))(by[c]=by[c]||[]).push(it);});
-  Object.keys(by).sort().forEach(c=>{if(by[c].length>=min)addQ(fam,qf(c),typeof sub==="function"?sub(c):sub,by[c],Object.assign({},d.opts,opts||{},{min}));});
+  Object.keys(by).sort().forEach(c=>{if(by[c].length>=min)addQ(fam,qf(c),typeof sub==="function"?sub(c):sub,by[c],Object.assign({},d.opts,opts||{},{min,ds}));});
 }
 
 /* ---------- matching ---------- */
 function norm(s){return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/&/g," and ").replace(/\+/g," plus ").replace(/['’‘`".,!?“”:()\[\]]/g,"").replace(/[-_/–—]/g," ").replace(/\s+/g," ").trim().replace(/^(the|a|an) /,"");}
 function sing(n){const w=n.split(" ");let l=w[w.length-1];if(l.length>3){if(/ies$/.test(l))l=l.slice(0,-3)+"y";else if(/(ch|sh|x|z|ss)es$/.test(l))l=l.slice(0,-2);else if(/[^s]s$/.test(l))l=l.slice(0,-1);}w[w.length-1]=l;return w.join(" ");}
-function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(Math.abs(m-n)>2)return 9;let prev=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const cur=[i];for(let j=1;j<=n;j++)cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));prev=cur;}return prev[n];}
+/* bounded Levenshtein: returns max+1 as soon as the distance must exceed max */
+function lev(a,b,max){max=max==null?2:max;if(a===b)return 0;const m=a.length,n=b.length;if(Math.abs(m-n)>max)return max+1;let prev=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const cur=[i];let lo=i;for(let j=1;j<=n;j++){cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));if(cur[j]<lo)lo=cur[j];}if(lo>max)return max+1;prev=cur;}return prev[n];}
 function tierFor(i,n){if(i===n-1)return 4;const p=(i+1)/(n-1);if(i===0||p<=.10+1e-9)return 0;if(p<=.50+1e-9)return 1;if(p<=.80+1e-9)return 2;return 3;}
+
+/* ---- canonical forms: the "essence" of an answer ----
+   number words, ordinals and Roman numerals become digits ("Henry the Eighth" = "Henry VIII" = "henry 8"),
+   common abbreviations expand (St = Saint, Mt = Mount), filler words drop out, every word is singular. */
+const NUM_U={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19};
+const NUM_T={twenty:20,thirty:30,forty:40,fourty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+const NUM_O={first:1,second:2,third:3,fourth:4,fifth:5,sixth:6,seventh:7,eighth:8,eigth:8,ninth:9,tenth:10,eleventh:11,twelfth:12,thirteenth:13,fourteenth:14,fifteenth:15,sixteenth:16,seventeenth:17,eighteenth:18,nineteenth:19,twentieth:20,thirtieth:30,fortieth:40,fiftieth:50,sixtieth:60,seventieth:70,eightieth:80,ninetieth:90,hundredth:100,thousandth:1000};
+const ABBR={st:"saint",ste:"sainte",mt:"mount",mtn:"mountain",mtns:"mountain",ft:"fort",pt:"point",dr:"doctor",mr:"mister",jr:"junior",sr:"senior",pres:"president",gen:"general",capt:"captain",lt:"lieutenant",sgt:"sergeant",prof:"professor",bros:"brother",intl:"international",natl:"national",n:"and",vs:"versus",nr:"number",no:"number",isl:"island",is:"island",lk:"lake",r:"river",riv:"river"};
+const STOPW=new Set(["the","a","an","of","and","von","van","der","de","da","del","du","le","la"]);
+/* words that describe rather than name: dropped in the loosest comparison only
+   (King Henry VIII, Mount Everest, the planet Mars, Mexico City) */
+const TITLEW=new Set(["king","queen","prince","princess","saint","sainte","sir","dame","lord","lady","pope","emperor","empress","tsar","czar","president","general","doctor","mister","missus","miss","mrs","ms","captain","professor","chief","admiral","sultan","pharaoh","shah","kaiser","duke","duchess","baron","jr","junior","senior","mount","mountain","lake","river","island","city","planet","state","province","county","desert","volcano","ocean","sea"]);
+function romanVal(w){if(w.length>6||!/^(xl|x{0,3})(ix|iv|v?i{0,3})$/.test(w)||!w)return -1;const v={i:1,v:5,x:10,l:50};let t=0;for(let i=0;i<w.length;i++){const a=v[w[i]],b=v[w[i+1]]||0;t+=a<b?-a:a;}return t;}
+function isNumW(w){return w in NUM_U||w in NUM_T||w in NUM_O||w==="hundred"||w==="thousand";}
+function numRun(t,i){
+  let total=0,cur=0,prev="",j=i,used=0;
+  for(;j<t.length;j++){
+    const x=t[j];
+    if(x==="and"){if(prev==="h"&&j+1<t.length&&isNumW(t[j+1])&&t[j+1]!=="hundred")continue;break;}
+    if(x==="hundred"){cur=(cur||1)*100;prev="h";used++;continue;}
+    if(x==="thousand"){total+=(cur||1)*1000;cur=0;prev="k";used++;continue;}
+    let v,k;if(x in NUM_U){v=NUM_U[x];k=v>=10?"n":"u";}else if(x in NUM_T){v=NUM_T[x];k="t";}else if(x in NUM_O){v=NUM_O[x];k="o";}else break;
+    const year=cur>=10&&cur<100&&(prev==="n"||prev==="t"||prev==="u"&&cur>20);
+    if(k==="o"){if(!used)cur=v;else if((prev==="t"&&v<10)||prev==="h"||prev==="k")cur+=v;else if(year&&v>=10)cur=cur*100+v;else break;used++;j++;break;}
+    if(!used||prev==="h"||prev==="k"){cur+=v;}
+    else if(prev==="t"&&k==="u"){cur+=v;}
+    else if((k==="n"||k==="t")&&year){cur=cur*100+v;}
+    else break;
+    prev=k;used++;
+  }
+  return used?{v:total+cur,j}:null;
+}
+function canonToks(n){/* n: a norm()'d string */
+  const t=n.split(" ").filter(Boolean).map(w=>{if(ABBR[w])return ABBR[w];const o=/^(\d+)(st|nd|rd|th)$/.exec(w);return o?o[1]:w;});
+  const out=[];
+  for(let i=0;i<t.length;){
+    if(isNumW(t[i])){const r=numRun(t,i);if(r){out.push(String(r.v));i=r.j;continue;}}
+    const rv=i>0?romanVal(t[i]):-1;out.push(rv>0?String(rv):t[i]);i++;/* "Henry I" yes, "I, Robot" no */
+  }
+  const kept=out.filter(w=>!STOPW.has(w)).map(w=>w.length>3&&!/^\d+$/.test(w)?sing(w):w);
+  return kept.length?kept:out;
+}
+function looseToks(ct){const k=ct.filter(w=>!TITLEW.has(w));return k.length?k:ct;}
+/* rough sound-alike key: Ghandi = Gandhi, Filadelfia = Philadelphia, Chaikovsky = Tchaikovsky */
+function phon(w){
+  let s=w.replace(/[^a-z0-9]/g,"");if(/^\d+$/.test(s))return s;
+  s=s.replace(/^(kn|gn|pn|wr|ps)/,m=>m[1]).replace(/tch/g,"ch").replace(/sch/g,"sh").replace(/ph/g,"f").replace(/gh/g,"g").replace(/ck/g,"k").replace(/q/g,"k").replace(/x/g,"ks").replace(/tz/g,"z").replace(/dg/g,"j")
+   .replace(/c(?=[eiy])/g,"s").replace(/sh|ch/g,"X").replace(/c/g,"k").replace(/z/g,"s").replace(/h/g,"").replace(/w(?![aeiou])/g,"").replace(/y/g,"i").replace(/([a-zX])\1+/g,"$1").replace(/[aeiou]+/g,"a");
+  return s;
+}
+const phonStr=toks=>toks.map(phon).join(" ");
+
 function prepQ(Qd){
   const n=Qd.items.length;
   const list=Qd.items.map((it,i)=>{
@@ -298,15 +375,105 @@ function prepQ(Qd){
   list.forEach(x=>{x.compact=new Set([...x.keys].map(k=>k.replace(/ /g,"")));});
   return Object.assign({},Qd,{list,n});
 }
-function matchQ(P,raw){
-  const s=norm(raw);if(!s)return -1;const s2=sing(s),sc=s.replace(/ /g,""),sc2=s2.replace(/ /g,"");
+/* forms used by the "did you mean" layer, built on first need */
+function prepLoose(P){
+  if(P._loose)return P._loose;
+  const items=P.list.map(x=>{
+    const forms=[...x.keys].map(k=>{const ct=canonToks(k),lt=looseToks(ct);return{ct,lt,c:ct.join(" "),l:lt.slice().sort().join(" "),cc:ct.join(""),p:phonStr(ct)};});
+    return{forms};
+  });
+  return(P._loose=items);
+}
+/* every answer in this prompt's family and source dataset: a guess that exactly names some
+   other real thing of the same kind is never "corrected" into a lookalike (Austria is not a
+   typo of Australia), while an unrelated word elsewhere in the bank (chili) can still mean Chile */
+const KNOWN={};
+function knownKeys(P){
+  const id=(P.fam||"")+"|"+(P.ds||"");if(KNOWN[id])return KNOWN[id];const K=KNOWN[id]=new Set();
+  const add=s=>{const k=norm(s);if(k){K.add(k);K.add(sing(k));}};
+  const fromItems=items=>items.forEach(it=>{add(it.name);it.alias.forEach(add);});
+  BANK.forEach(b=>{if(b.fam===P.fam)fromItems(b.items);});
+  if(P.ds&&DATASETS[P.ds])fromItems(DATASETS[P.ds].items);
+  return K;
+}
+/* exact layer: aliases, plurals, spacing, and plain typos. Returns {i, how} with i=-1 on a miss */
+function matchQx(P,raw){
+  const s=norm(raw);if(!s)return{i:-1};const s2=sing(s),sc=s.replace(/ /g,""),sc2=s2.replace(/ /g,"");
   const extra=/ves$/.test(s)?[s.replace(/ves$/,"f"),s.replace(/ves$/,"fe")]:[];
-  for(let i=0;i<P.list.length;i++){const k=P.list[i].keys;if(k.has(s)||k.has(s2)||extra.some(e=>k.has(e)))return i;}
-  for(let i=0;i<P.list.length;i++){const c=P.list[i].compact;if(c.has(sc)||c.has(sc2))return i;}
-  const tol=s.length>=11?2:s.length>=5?1:0;if(!tol)return -1;
+  for(let i=0;i<P.list.length;i++){const k=P.list[i].keys;if(k.has(s)||k.has(s2)||extra.some(e=>k.has(e)))return{i,how:"exact"};}
+  for(let i=0;i<P.list.length;i++){const c=P.list[i].compact;if(c.has(sc)||c.has(sc2))return{i,how:"exact"};}
+  const tol=s.length>=11?2:s.length>=5?1:0;if(!tol)return{i:-1};
+  const kn=knownKeys(P);if(kn.has(s)||kn.has(s2))return{i:-1};
   let best=-1,bd=9,tie=false;
-  P.list.forEach((it,i)=>it.keys.forEach(k=>{if(k.length<4)return;const d=lev(s,k);if(d<bd){bd=d;best=i;tie=false;}else if(d===bd&&i!==best)tie=true;}));
-  return bd<=tol&&!tie?best:-1;
+  P.list.forEach((it,i)=>it.keys.forEach(k=>{if(k.length<4)return;const d=lev(s,k,tol);if(d<bd){bd=d;best=i;tie=false;}else if(d===bd&&i!==best)tie=true;}));
+  return bd<=tol&&!tie?{i:best,how:"typo"}:{i:-1};
+}
+function matchQ(P,raw){return matchQx(P,raw).i;}
+/* every answer anywhere in the bank, for "is this guess already a real word in its own right?" */
+let ANYKEY=null;
+function anyKeys(){
+  if(ANYKEY)return ANYKEY;ANYKEY=new Set();
+  const add=s=>{const k=norm(s);if(k){ANYKEY.add(k);ANYKEY.add(sing(k));}};
+  BANK.forEach(b=>b.items.forEach(it=>{add(it.name);it.alias.forEach(add);}));
+  Object.values(DATASETS).forEach(d=>d.items.forEach(it=>{add(it.name);it.alias.forEach(add);}));
+  return ANYKEY;
+}
+/* intent layer. Returns {i, how} for a likely intended answer, {vague:true} when several
+   answers fit equally well ("Henry" on a list of Henrys), or {i:-1}. */
+function suggestQ(P,raw){
+  const s=norm(raw);if(!s)return{i:-1};
+  const L=prepLoose(P),ct=canonToks(s),lt=looseToks(ct);
+  const c=ct.join(" "),cc=ct.join(""),l=lt.slice().sort().join(" "),p=phonStr(ct);
+  const kn=knownKeys(P),known=kn.has(s)||kn.has(sing(s));
+  const ak=anyKeys(),real=known||ak.has(s)||ak.has(sing(s));/* the guess is itself a real answer somewhere */
+  const uniq=(test)=>{const hit=new Set();L.forEach((it,i)=>{if(it.forms.some(test))hit.add(i);});return hit;};
+  const pick=(hit,how)=>hit.size===1?{i:[...hit][0],how}:hit.size>1?{vague:true,n:hit.size}:null;
+  let r;
+  /* 1. same essence: number words, numerals, abbreviations, filler words, plurals */
+  if((r=pick(uniq(f=>f.c===c||f.cc===cc),"same")))return r;
+  /* 2. same words in any order, titles and descriptors dropped (King Henry 8th, Everest mountain) */
+  if(!(real&&lt.length<ct.length)&&(r=pick(uniq(f=>f.l===l),"order")))return r;
+  /* 3. containment: the guess is part of an answer (Einstein → Albert Einstein) or wraps one (the planet Mars) */
+  const big=(real&&lt.length<ct.length?ct:lt).filter(w=>w.length>=3||/^\d+$/.test(w));
+  if(big.join("").length>=4){
+    const sub=uniq(f=>f.lt.length>big.length&&big.every(w=>f.lt.includes(w)));
+    if(sub.size===1)return{i:[...sub][0],how:"part"};
+    if(sub.size>1)return{vague:true,n:sub.size};
+  }
+  if(!real&&lt.length>1){
+    let best=-1,bl=0,tie=false;
+    L.forEach((it,i)=>it.forms.forEach(f=>{const fl=f.lt.join("").length;if(f.lt.length<lt.length&&fl>=3&&f.lt.every(w=>lt.includes(w))){if(fl>bl){bl=fl;best=i;tie=false;}else if(fl===bl&&i!==best)tie=true;}}));
+    if(best>=0&&!tie)return{i:best,how:"wrap"};
+  }
+  if(known)return{i:-1,known:true};
+  if(real)return{i:-1};
+  /* 4. looser spelling: wider typo band on the canonical form */
+  const tol=cc.length>=11?3:cc.length>=7?2:cc.length>=4?1:0;
+  if(tol){
+    let best=-1,bd=9,tie=false;
+    L.forEach((it,i)=>it.forms.forEach(f=>{if(f.cc.length<4)return;const d=lev(cc,f.cc,tol);if(d<bd){bd=d;best=i;tie=false;}else if(d===bd&&i!==best)tie=true;}));
+    if(bd<=tol&&!tie&&bd/Math.max(cc.length,1)<=.34)return{i:best,how:"spell"};
+  }
+  /* 5. sounds the same, and is spelled at least roughly the same */
+  if(cc.length>=5){
+    const pp=p.replace(/ /g,"");
+    const hit=uniq(f=>{if(f.p.replace(/ /g,"")!==pp)return false;const d=lev(cc,f.cc,5),r=d/Math.max(cc.length,f.cc.length);return r<=.34||(pp.length>=6&&r<=.45);});
+    if(hit.size===1)return{i:[...hit][0],how:"sound"};
+  }
+  /* 6. a confident start of a longer answer (Mississ… → Mississippi) */
+  if(cc.length>=4){
+    const hit=uniq(f=>f.cc.length>cc.length&&f.cc.startsWith(cc)&&cc.length>=f.cc.length*.55);
+    if(hit.size===1)return{i:[...hit][0],how:"start"};
+  }
+  return{i:-1};
+}
+/* one call for the game: exact hit, suggestion, vague, or miss.
+   A plain typo fix whose input is itself some other real answer becomes a question instead (Chili → Chile?) */
+function judge(P,raw){
+  const m=matchQx(P,raw);
+  if(m.i>=0){if(m.how==="typo"){const s=norm(raw),ak=anyKeys();if(ak.has(s)||ak.has(sing(s)))return{i:m.i,sure:false,how:"typo"};}return{i:m.i,sure:true};}
+  const g=suggestQ(P,raw);
+  return g.i>=0?{i:g.i,sure:false,how:g.how}:{i:-1,vague:!!g.vague,known:!!g.known};
 }
 
 /* ---------- selection: no repeats across plays, one prompt per family per hole ---------- */
@@ -5431,6 +5598,8 @@ const Snd={
     if(tier===4){for(let i=0;i<10;i++)this.tone(2400+Math.random()*2400,.18,{vol:.03,delay:.45+i*.05});}
   },
   dry(){this.tone(320,.42,{type:"triangle",vol:.2,f2:120});this.tone(210,.6,{type:"triangle",vol:.18,f2:70,delay:.2});this.burst(.5,{freq:300,vol:.12,delay:.1});},
+  nope(){this.tone(196,.13,{type:"square",vol:.07,f2:150});this.tone(147,.2,{type:"square",vol:.07,f2:110,delay:.12});this.burst(.12,{freq:420,vol:.08});},
+  ask(){this.tone(660,.1,{type:"triangle",vol:.09});this.tone(880,.16,{type:"triangle",vol:.09,delay:.09});},
   blip(){if(!this.ctx||!this.on)return;this.tone(560+Math.random()*520,.045,{type:"square",vol:.025});},
   squeak(){this.tone(1100,.12,{vol:.12,f2:1900});this.tone(1500,.1,{vol:.08,f2:2300,delay:.1});},
   tick(low){this.tone(low?1500:1100,.035,{type:"square",vol:.04});},
@@ -5593,7 +5762,8 @@ function drawSet(sp,x,y,s,em){
   if(sp.type==="home"){
     if(em){lampGlow(22*k,-6*k,40*k,"255,200,120");cx.restore();return;}
     cx.fillStyle="#1b120c";cx.beginPath();cx.ellipse(0,0,60*k,30*k,0,0,7);cx.fill();
-    cx.strokeStyle="#1b120c";cx.lineWidth=16*k;cx.lineCap="round";cx.beginPath();cx.moveTo(-50*k,-10*k);cx.quadraticCurveTo(-80*k,-60*k,-60*k,-120*k);cx.stroke();
+    {/* the burrow's tunnel climbs to the surface and stops there, however far up that is on screen */
+      const sy=Y(0)-y,tx=-62*k;if(sy<-10*k){cx.strokeStyle="#1b120c";cx.lineWidth=16*k;cx.lineCap="round";cx.beginPath();cx.moveTo(-50*k,-10*k);cx.quadraticCurveTo(-84*k,(sy-10*k)/2,tx,sy);cx.stroke();}}
     cx.fillStyle="#2a1c13";cx.fillRect(-52*k,14*k,104*k,8*k);
     cx.fillStyle="#6d4a32";cx.fillRect(-42*k,6*k,36*k,8*k);cx.fillStyle="#4f7fbf";cx.fillRect(-36*k,1*k,30*k,6*k);cx.fillStyle="#efe6d8";cx.fillRect(-42*k,0,8*k,5*k);
     cx.fillStyle="#c9a24a";cx.fillRect(-6*k,-18*k,15*k,12*k);cx.fillStyle="#7fb2d9";cx.fillRect(-4.5*k,-16.5*k,12*k,9*k);cx.fillStyle="#5a4b52";cx.beginPath();cx.arc(1.5*k,-11*k,2.6*k,0,7);cx.fill();cx.fillStyle="#f6c76a";cx.beginPath();cx.arc(.3*k,-12*k,1.8*k,Math.PI,0);cx.fill();
@@ -5709,11 +5879,24 @@ function drawStrata(){
 function drawFeatures(){
   EMIT.length=0;EMF.length=0;
   const mT=Math.max(0,M(-80)),mB=M(H+80);if(mB<0)return;const fz=clamp(R.cam.z/.22,.5,3.2);
+  underground();/* nothing buried may poke up into the sky */
   const i0=Math.floor(mT/CH),i1=Math.floor(mB/CH);const step=Math.max(1,Math.ceil((i1-i0)/240));
   for(let i=i0;i<=i1;i+=step)chunk(i).forEach(f=>drawFeat(f,f.x*W,Y(f.m),fz,false));
   SETS.forEach(sp=>{const y=Y(sp.m);if(y>-500&&y<H+500)drawSet(sp,sp.x*W,y,fz,false);});
+  cx.restore();
+  /* Digby's front door: a little molehill where the burrow tunnel reaches the surface */
+  const home=SETS[0],sy=Y(0);if(sy>-40&&sy<H+40&&Y(home.m)-sy>10*fz)molehill(home.x*W-62*fz,sy,fz);
 }
-function drawEmissive(){EMF.forEach(e=>{if(e[4])drawSet(e[0],e[1],e[2],e[3],true);else drawFeat(e[0],e[1],e[2],e[3],true);});}
+function underground(){cx.save();cx.beginPath();cx.rect(-50,Y(0),W+100,H+100);cx.clip();}
+function molehill(x,y,k){
+  cx.save();cx.translate(x,y);
+  cx.fillStyle="#5b3d28";cx.beginPath();cx.moveTo(-17*k,1);cx.quadraticCurveTo(-11*k,-11*k,0,-11.5*k);cx.quadraticCurveTo(11*k,-11*k,17*k,1);cx.closePath();cx.fill();
+  cx.fillStyle="rgba(255,220,180,.12)";cx.beginPath();cx.moveTo(-12*k,-3*k);cx.quadraticCurveTo(-7*k,-10*k,1*k,-10.5*k);cx.quadraticCurveTo(-5*k,-7*k,-8*k,-2*k);cx.closePath();cx.fill();
+  cx.fillStyle="#1b120c";cx.beginPath();cx.ellipse(1*k,-1.2*k,6.5*k,3.2*k,0,Math.PI,0);cx.fill();
+  cx.fillStyle="#6e4a30";[[-19,0,2.2],[19,-.5,1.8],[-14,-1,1.4],[23,0,1.3]].forEach(([dx,dy,r])=>{cx.beginPath();cx.arc(dx*k,dy*k,r*k,0,7);cx.fill();});
+  cx.restore();
+}
+function drawEmissive(){underground();EMF.forEach(e=>{if(e[4])drawSet(e[0],e[1],e[2],e[3],true);else drawFeat(e[0],e[1],e[2],e[3],true);});cx.restore();}
 
 /* ---------- bore, pipe, bit ---------- */
 function drawBore(){
@@ -5834,6 +6017,11 @@ const LINES={
   land2:["Ooh, copper! Shiny.","Now that's a pick!","Good one. I didn't think of it.","Deeper than most people go!"],
   land3:["GOLD! Who even knows that?","Now we're tunneling!","You've done this before.","My whiskers are tingling!"],
   land4:["DIAMOND!! Nobody says that!","THE one! The only one!","I'm framing this answer.","Sparkle sparkle!!","Rarest answer on the list! WOW!"],
+  miss:["Nope, not on my list. Try again!","Bonk. Just rock. Try another!","Not that one. Keep guessing!","Nothing down there. Another?","Clock's running! Try again!","Hmm, no. But you've got time!","Shake it off. Next guess!"],
+  missmany:["Keep swinging!","Think sideways!","Any of the obvious ones? Even Gravel beats nothing!","Try the first thing that pops into your head!"],
+  vague:["Which one, though? Be specific!","Narrow it down for me!","Close! Which one do you mean?"],
+  known:["That's real! Just not on this list.","True, but not on my list. Try another!"],
+  suggest:["Ooh, I think I know what you mean.","Is that what you meant?","Close enough to ask!"],
   dry:["Hmm. Nothing down there.","Dry hole. Happens to the best moles.","That's not on my list…","Rocks. Just rocks.","Bonk. That's not it."],
   timeup:["zzz… oh! Did we dig?","Time flew. We didn't.","The drill fell asleep. So did I."],
   poke:["Hey! I'm working.","That tickles!","Petting the mole: +0 points.","Have you tried a weirder answer?","Squeak.","I'm a professional.","Careful, I bite. I don't bite.","My hat is load-bearing."],
@@ -5895,13 +6083,19 @@ const Mole={
   onHole(){this.trail=[];this.say(pickLine("hello"),2);this.hopUp(240);this.setMood("happy",2);},
   onPrompt(first){if(first)return;if(Math.random()<.45)this.say(pickLine("prompt"),0);},
   onType(){this.lastType=R.t;if(this.mood==="idle"||this.mood==="think")this.setMood("think",1.2);},
+  onMiss(n,kind){
+    this.lastType=R.t;this.setMood(n>=3?"nervous":"meh",1.4);if(n>=2)this.emote("sweat",1);
+    const key=kind==="vague"?"vague":kind==="known"?"known":n>=4?"missmany":"miss";
+    if(n===1||kind!=="miss"||Math.random()<.45)this.say(pickLine(key),2);
+  },
+  onSuggest(){this.lastType=R.t;this.setMood("think",2.4);this.sniff=1;if(Math.random()<.5)this.say(pickLine("suggest"),1);},
   onLow(){this.setMood("nervous",4);this.emote("sweat",2);this.say(pickLine("low"),2);},
   onDive(){this.setMood("focus",30);this.say(pickLine("go"),2,1.2);},
   onPass(t){if(Math.random()<.5)this.say(pickLine("pass").replace("{t}",TIERS[t].name),1,1);},
   onBreach(i){if(LINES.strata[i]&&Math.random()<.75)this.say(LINES.strata[i],2);},
   onLandmark(l){this.say(l.q||("Passed "+l.s+"!"),3);this.emote("spark",3);},
   onLand(res){
-    if(res.tier<0){if(res.timeUp){this.setMood("sleep",3.5);this.emote("zzz",3);this.say(pickLine("timeup"),4);}else{this.setMood("dizzy",3);this.say(pickLine("dry"),4);}if(S.mode==="endless")setTimeout(()=>this.say(pickLine("bit"),4),1600);return;}
+    if(res.tier<0){if(!(res.misses&&res.misses.length)){this.setMood("sleep",3.5);this.emote("zzz",3);this.say(pickLine("timeup"),4);}else{this.setMood("dizzy",3);this.say(pickLine("dry"),4);}if(S.mode==="endless")setTimeout(()=>this.say(pickLine("bit"),4),1600);return;}
     const t=res.tier;this.say(pickLine("land"+t),4);
     if(t===0){this.setMood("meh",2.8);}
     else if(t===1){this.setMood("happy",2.5);}
@@ -6071,16 +6265,66 @@ function startHole(){
 function startRound(auto,keep){
   const q=keep||pickNext(S.pick);S.qid=q.id;P=prepQ(q);S.phase="play";R.mode="idle";
   renderCard();renderPips();makeLines();
-  const d=$("dock");d.classList.remove("away");$("guess").value="";$("guess").disabled=false;
+  const d=$("dock");d.classList.remove("away");$("guess").value="";$("guess").disabled=false;resetGuess();
   resetTimer();if(auto){startTimer();setTimeout(()=>$("guess").focus({preventScroll:true}),50);}
   Mole.onPrompt(S.round===0&&S.mode==="classic");
 }
+/* ---------- guessing: as many tries as the clock allows ----------
+   A guess on the list drills. A near miss asks "Did you mean …?". Anything else says try again,
+   and the timer keeps running. Only running out of time (or giving up) makes a dry hole. */
+let G={misses:[],pend:null};
+function resetGuess(){G={misses:[],pend:null};renderFb("");const g=$("guess");g.classList.remove("bad");g.placeholder="Type an answer";}
+function renderFb(msg){
+  let h=msg||"";
+  if(G.misses.length){const show=G.misses.slice(-5);h+=`<div class="tried"><span>Tried</span>${show.map(m=>`<s>${esc(m)}</s>`).join("")}${G.misses.length>5?`<span>+${G.misses.length-5}</span>`:""}<button type="button" class="giveup" id="giveUp">Give up</button></div>`;}
+  $("fb").innerHTML=h;
+  const keep=e=>e.preventDefault();/* keep the keyboard up while tapping these */
+  const y=$("fbYes"),n=$("fbNo"),gu=$("giveUp");
+  if(y){y.onmousedown=keep;y.onclick=acceptPend;}
+  if(n){n.onmousedown=keep;n.onclick=rejectPend;}
+  if(gu){gu.onmousedown=keep;gu.onclick=()=>{if(S.phase!=="play")return;Snd.click();finish(-1,"",{gaveUp:true});};}
+}
 function submit(raw,timeUp){
   if(S.phase!=="play")return;raw=(raw||"").trim();
-  if(!raw&&!timeUp){const i=$("guess");i.classList.remove("nudge");void i.offsetWidth;i.classList.add("nudge");return;}
-  Snd.init();
-  const idx=raw?matchQ(P,raw):-1,it=idx>=0?P.list[idx]:null;
-  const res={q:P.q,grp:P.grp,raw,idx,tier:it?it.tier:-1,name:it?it.name:null,rank:it?it.rank:0,n:P.n,pts:it?TIERS[it.tier].pts:0,timeUp:!raw,from:S.depth};
+  if(timeUp)return timeUpFinish(raw);
+  if(G.pend&&(!raw||norm(raw)===norm(G.pend.raw)))return acceptPend();
+  if(!raw){const i=$("guess");i.classList.remove("nudge");void i.offsetWidth;i.classList.add("nudge");return;}
+  Snd.init();startTimer();
+  if(G.misses.some(m=>norm(m)===norm(raw)))return miss(raw,"dup");
+  const j=judge(P,raw);
+  if(j.i>=0&&j.sure)return finish(j.i,raw);
+  if(j.i>=0)return ask(j.i,raw);
+  miss(raw,j.vague?"vague":j.known?"known":"miss");
+}
+function ask(i,raw){
+  G.pend={i,raw};Snd.ask();Mole.onSuggest();
+  renderFb(`<div class="fbm ask" role="alert"><span class="msg">Did you mean <b>${esc(P.list[i].name)}</b>?</span><button type="button" class="mini" id="fbYes">Yes</button><button type="button" class="mini alt" id="fbNo">No</button></div>`);
+  const g=$("guess");g.classList.remove("bad");g.focus({preventScroll:true});g.select();
+}
+function acceptPend(){const p=G.pend;if(!p||S.phase!=="play")return;Snd.click();finish(p.i,p.raw,{asked:true});}
+function rejectPend(){const p=G.pend;if(!p||S.phase!=="play")return;G.pend=null;miss(p.raw,"miss");}
+function miss(raw,kind){
+  G.pend=null;
+  if(kind==="miss"||kind==="known")G.misses.push(raw);
+  const q=`<q>${esc(raw)}</q>`;
+  const txt=kind==="vague"?`${q} could be more than one answer. <b>Be more specific.</b>`
+    :kind==="known"?`${q} is real, but it isn't on this list. <b>Try again.</b>`
+    :kind==="dup"?`You already tried ${q}. <b>Try something else.</b>`
+    :`${q} isn't on the list. <b>Try again.</b>`;
+  renderFb(`<div class="fbm miss" role="alert"><span class="ic" aria-hidden="true">✕</span><span class="msg">${txt}</span></div>`);
+  Snd.nope();Mole.onMiss(G.misses.length,kind==="dup"?"miss":kind);R.shake=Math.max(R.shake,1.4);
+  const g=$("guess");g.value="";g.placeholder="Try another answer";g.classList.remove("nudge");void g.offsetWidth;g.classList.add("nudge","bad");g.focus({preventScroll:true});
+}
+function timeUpFinish(raw){
+  let i=-1,r="";
+  if(raw){const j=judge(P,raw);if(j.i>=0){i=j.i;r=raw;}}
+  if(i<0&&G.pend){i=G.pend.i;r=G.pend.raw;}/* the clock beat the Yes button: count it */
+  if(i<0&&raw&&!G.misses.some(m=>norm(m)===norm(raw)))G.misses.push(raw);
+  finish(i,r,{asked:i>=0});
+}
+function finish(i,raw,o){
+  o=o||{};const it=i>=0?P.list[i]:null;const misses=G.misses.slice();G.pend=null;
+  const res={q:P.q,grp:P.grp,raw,idx:i,tier:it?it.tier:-1,name:it?it.name:null,rank:it?it.rank:0,n:P.n,pts:it?TIERS[it.tier].pts:0,timeUp:!it&&!o.gaveUp,gaveUp:!!o.gaveUp,asked:!!(o.asked&&it&&norm(raw)!==norm(it.name)),misses,from:S.depth};
   dive(res);
 }
 async function dive(res){
@@ -6135,10 +6379,12 @@ function flashScreen(col){const f=$("flash");f.style.background=col;f.classList.
 function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
 function showReveal(res){
   const col=res.tier>=0?TIERS[res.tier].col:"var(--miss)";
-  const stamp=res.tier>=0?TIERS[res.tier].name:res.timeUp?"Time's up":"Dry hole";
+  const stamp=res.tier>=0?TIERS[res.tier].name:"Dry hole";
+  const ms=res.misses||[],tries=ms.length?` · on try ${ms.length+1}`:"";
+  const tried=ms.length?`Tried ${ms.map(m=>"“"+esc(m)+"”").join(", ")}. ${ms.length===1?"It wasn't":"None of them were"} on the list.`:"";
   const head=res.tier>=0
-    ?`<b>${esc(res.name)}</b><small><strong>+${res.pts} pts · drilled ${fmt(res.pts*MPP)} m</strong></small><small>${res.tier===4?`The only Diamond on this list of ${res.n}`:`${ordinal(res.rank)} most common of ${res.n} answers`}</small>`
-    :`<b>${res.raw?esc(res.raw):"No answer"}</b><small>${res.raw?"Not on the list. The drill didn't move.":"The drill didn't move."}${S.mode==="endless"?` ${S.bits} bit${S.bits===1?"":"s"} left.`:""}</small>`;
+    ?`<b>${esc(res.name)}</b><small><strong>+${res.pts} pts · drilled ${fmt(res.pts*MPP)} m${tries}</strong></small>${res.asked?`<small>You typed “${esc(res.raw)}”. Close enough.</small>`:""}<small>${res.tier===4?`The only Diamond on this list of ${res.n}`:`${ordinal(res.rank)} most common of ${res.n} answers`}</small>`
+    :`<b>${res.gaveUp?"Gave up":"Time's up"}</b><small>${tried||"No answer, so the drill didn't move."}${tried?" The drill didn't move.":""}${S.mode==="endless"?` ${S.bits} bit${S.bits===1?"":"s"} left.`:""}</small>`;
   const chip=x=>`<span class="chip${x.rank-1===res.idx?" mine":""}">${esc(x.name)}</span>`;
   const rows=TIERS.map((t,ti)=>{const items=P.list.filter(x=>x.tier===ti);const CAP=36;
     let body=items.map(chip).join("");
@@ -6166,7 +6412,7 @@ function showEnd(){
   const passed=LANDMARKS.filter(l=>l.m<=S.depth);const deepest=passed[passed.length-1];const nextL=LANDMARKS.find(l=>l.m>S.depth);
   const glyph=["▁","▃","▅","▇","◆"];
   const share=`Borehole · ${fmt(S.depth)} m · ${fmt(S.score)} pts\n${S.results.map(r=>r.tier>=0?glyph[r.tier]:"·").join(" ")}${deepest?`\nDeeper than ${deepest.s}`:""}`;
-  const rec=S.results.map((r,i)=>`<div style="--tc:${r.tier>=0?TIERS[r.tier].col:"var(--miss)"}"><span>${i+1}. ${esc(r.q)}<small>${r.tier>=0?`${esc(r.name)} · ${TIERS[r.tier].name}`:r.raw?`${esc(r.raw)} · dry hole`:"Time's up"}</small></span><span>+${r.pts}</span></div>`).join("");
+  const rec=S.results.map((r,i)=>`<div style="--tc:${r.tier>=0?TIERS[r.tier].col:"var(--miss)"}"><span>${i+1}. ${esc(r.q)}<small>${r.tier>=0?`${esc(r.name)} · ${TIERS[r.tier].name}`:`Dry hole · ${r.gaveUp?"gave up":"time ran out"}`}</small></span><span>+${r.pts}</span></div>`).join("");
   $("sheetIn").innerHTML=`<div class="rowx"><span class="eb2">${S.mode==="endless"?"Out of drill bits":"Hole complete"}</span><span class="eb2">${newBest?"New deepest hole on this device":"Deepest on this device: "+fmt(Math.max(best,S.depth))+" m"}</span></div>
     <p class="big">${fmt(S.depth)}<small> m down</small></p>
     <div class="stats"><div><span>Score</span><b>${fmt(S.score)}</b></div><div><span>Rock temp</span><b>${Math.round(tempAt(S.depth))}°C</b></div><div><span>Layer</span><b>${STRATA[stratumIdx(S.depth)].n}</b></div><div><span>Diamonds</span><b>${S.results.filter(r=>r.tier===4).length}</b></div></div>
@@ -6189,11 +6435,11 @@ async function newHole(){
 /* ---------- wiring ---------- */
 $("f").addEventListener("submit",e=>{e.preventDefault();submit($("guess").value,false);});
 $("guess").addEventListener("focus",()=>{Snd.init();startTimer();});
-$("guess").addEventListener("input",()=>{startTimer();Mole.onType();});
+$("guess").addEventListener("input",()=>{startTimer();Mole.onType();$("guess").classList.remove("bad");});
 $("helpBtn").onclick=()=>{$("modal").hidden=false;$("closeHelp").focus();};
 $("closeHelp").onclick=()=>{$("modal").hidden=true;};
 $("modal").addEventListener("click",e=>{if(e.target===$("modal"))$("modal").hidden=true;});
-addEventListener("keydown",e=>{if(e.key==="Escape")$("modal").hidden=true;});
+addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(!$("modal").hidden){$("modal").hidden=true;return;}if(G.pend)rejectPend();});
 function setSound(on){Snd.setOn(on);store("bh-sound",on?"1":"0");$("sndBtn").setAttribute("aria-pressed",String(on));$("sndBtn").setAttribute("aria-label",on?"Sound on":"Sound off");$("sndOn").style.display=on?"":"none";$("sndOff").style.display=on?"none":"";}
 $("sndBtn").onclick=()=>{Snd.init();setSound(!Snd.on);};
 cv.addEventListener("pointerdown",e=>{if(Mole.hit(e.clientX,e.clientY)){Snd.init();Mole.onPoke();}});
@@ -6214,6 +6460,7 @@ function boot(data){
     else startHole();
   }else startHole();
   requestAnimationFrame(t=>{lastT=t;loop(t);});
+  (window.requestIdleCallback||(f=>setTimeout(f,1200)))(()=>anyKeys());
 }
 window.claude?.hot?.snapshot?.(()=>({S}));
 window.claude?.hot?.ready?window.claude.hot.ready(boot):boot(window.claude?.hot?.data??{});

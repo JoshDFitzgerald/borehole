@@ -151,7 +151,8 @@ function drawSet(sp,x,y,s,em){
   if(sp.type==="home"){
     if(em){lampGlow(22*k,-6*k,40*k,"255,200,120");cx.restore();return;}
     cx.fillStyle="#1b120c";cx.beginPath();cx.ellipse(0,0,60*k,30*k,0,0,7);cx.fill();
-    cx.strokeStyle="#1b120c";cx.lineWidth=16*k;cx.lineCap="round";cx.beginPath();cx.moveTo(-50*k,-10*k);cx.quadraticCurveTo(-80*k,-60*k,-60*k,-120*k);cx.stroke();
+    {/* the burrow's tunnel climbs to the surface and stops there, however far up that is on screen */
+      const sy=Y(0)-y,tx=-62*k;if(sy<-10*k){cx.strokeStyle="#1b120c";cx.lineWidth=16*k;cx.lineCap="round";cx.beginPath();cx.moveTo(-50*k,-10*k);cx.quadraticCurveTo(-84*k,(sy-10*k)/2,tx,sy);cx.stroke();}}
     cx.fillStyle="#2a1c13";cx.fillRect(-52*k,14*k,104*k,8*k);
     cx.fillStyle="#6d4a32";cx.fillRect(-42*k,6*k,36*k,8*k);cx.fillStyle="#4f7fbf";cx.fillRect(-36*k,1*k,30*k,6*k);cx.fillStyle="#efe6d8";cx.fillRect(-42*k,0,8*k,5*k);
     cx.fillStyle="#c9a24a";cx.fillRect(-6*k,-18*k,15*k,12*k);cx.fillStyle="#7fb2d9";cx.fillRect(-4.5*k,-16.5*k,12*k,9*k);cx.fillStyle="#5a4b52";cx.beginPath();cx.arc(1.5*k,-11*k,2.6*k,0,7);cx.fill();cx.fillStyle="#f6c76a";cx.beginPath();cx.arc(.3*k,-12*k,1.8*k,Math.PI,0);cx.fill();
@@ -267,11 +268,24 @@ function drawStrata(){
 function drawFeatures(){
   EMIT.length=0;EMF.length=0;
   const mT=Math.max(0,M(-80)),mB=M(H+80);if(mB<0)return;const fz=clamp(R.cam.z/.22,.5,3.2);
+  underground();/* nothing buried may poke up into the sky */
   const i0=Math.floor(mT/CH),i1=Math.floor(mB/CH);const step=Math.max(1,Math.ceil((i1-i0)/240));
   for(let i=i0;i<=i1;i+=step)chunk(i).forEach(f=>drawFeat(f,f.x*W,Y(f.m),fz,false));
   SETS.forEach(sp=>{const y=Y(sp.m);if(y>-500&&y<H+500)drawSet(sp,sp.x*W,y,fz,false);});
+  cx.restore();
+  /* Digby's front door: a little molehill where the burrow tunnel reaches the surface */
+  const home=SETS[0],sy=Y(0);if(sy>-40&&sy<H+40&&Y(home.m)-sy>10*fz)molehill(home.x*W-62*fz,sy,fz);
 }
-function drawEmissive(){EMF.forEach(e=>{if(e[4])drawSet(e[0],e[1],e[2],e[3],true);else drawFeat(e[0],e[1],e[2],e[3],true);});}
+function underground(){cx.save();cx.beginPath();cx.rect(-50,Y(0),W+100,H+100);cx.clip();}
+function molehill(x,y,k){
+  cx.save();cx.translate(x,y);
+  cx.fillStyle="#5b3d28";cx.beginPath();cx.moveTo(-17*k,1);cx.quadraticCurveTo(-11*k,-11*k,0,-11.5*k);cx.quadraticCurveTo(11*k,-11*k,17*k,1);cx.closePath();cx.fill();
+  cx.fillStyle="rgba(255,220,180,.12)";cx.beginPath();cx.moveTo(-12*k,-3*k);cx.quadraticCurveTo(-7*k,-10*k,1*k,-10.5*k);cx.quadraticCurveTo(-5*k,-7*k,-8*k,-2*k);cx.closePath();cx.fill();
+  cx.fillStyle="#1b120c";cx.beginPath();cx.ellipse(1*k,-1.2*k,6.5*k,3.2*k,0,Math.PI,0);cx.fill();
+  cx.fillStyle="#6e4a30";[[-19,0,2.2],[19,-.5,1.8],[-14,-1,1.4],[23,0,1.3]].forEach(([dx,dy,r])=>{cx.beginPath();cx.arc(dx*k,dy*k,r*k,0,7);cx.fill();});
+  cx.restore();
+}
+function drawEmissive(){underground();EMF.forEach(e=>{if(e[4])drawSet(e[0],e[1],e[2],e[3],true);else drawFeat(e[0],e[1],e[2],e[3],true);});cx.restore();}
 
 /* ---------- bore, pipe, bit ---------- */
 function drawBore(){

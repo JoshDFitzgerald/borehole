@@ -11,6 +11,11 @@ const LINES={
   land2:["Ooh, copper! Shiny.","Now that's a pick!","Good one. I didn't think of it.","Deeper than most people go!"],
   land3:["GOLD! Who even knows that?","Now we're tunneling!","You've done this before.","My whiskers are tingling!"],
   land4:["DIAMOND!! Nobody says that!","THE one! The only one!","I'm framing this answer.","Sparkle sparkle!!","Rarest answer on the list! WOW!"],
+  miss:["Nope, not on my list. Try again!","Bonk. Just rock. Try another!","Not that one. Keep guessing!","Nothing down there. Another?","Clock's running! Try again!","Hmm, no. But you've got time!","Shake it off. Next guess!"],
+  missmany:["Keep swinging!","Think sideways!","Any of the obvious ones? Even Gravel beats nothing!","Try the first thing that pops into your head!"],
+  vague:["Which one, though? Be specific!","Narrow it down for me!","Close! Which one do you mean?"],
+  known:["That's real! Just not on this list.","True, but not on my list. Try another!"],
+  suggest:["Ooh, I think I know what you mean.","Is that what you meant?","Close enough to ask!"],
   dry:["Hmm. Nothing down there.","Dry hole. Happens to the best moles.","That's not on my list…","Rocks. Just rocks.","Bonk. That's not it."],
   timeup:["zzz… oh! Did we dig?","Time flew. We didn't.","The drill fell asleep. So did I."],
   poke:["Hey! I'm working.","That tickles!","Petting the mole: +0 points.","Have you tried a weirder answer?","Squeak.","I'm a professional.","Careful, I bite. I don't bite.","My hat is load-bearing."],
@@ -72,13 +77,19 @@ const Mole={
   onHole(){this.trail=[];this.say(pickLine("hello"),2);this.hopUp(240);this.setMood("happy",2);},
   onPrompt(first){if(first)return;if(Math.random()<.45)this.say(pickLine("prompt"),0);},
   onType(){this.lastType=R.t;if(this.mood==="idle"||this.mood==="think")this.setMood("think",1.2);},
+  onMiss(n,kind){
+    this.lastType=R.t;this.setMood(n>=3?"nervous":"meh",1.4);if(n>=2)this.emote("sweat",1);
+    const key=kind==="vague"?"vague":kind==="known"?"known":n>=4?"missmany":"miss";
+    if(n===1||kind!=="miss"||Math.random()<.45)this.say(pickLine(key),2);
+  },
+  onSuggest(){this.lastType=R.t;this.setMood("think",2.4);this.sniff=1;if(Math.random()<.5)this.say(pickLine("suggest"),1);},
   onLow(){this.setMood("nervous",4);this.emote("sweat",2);this.say(pickLine("low"),2);},
   onDive(){this.setMood("focus",30);this.say(pickLine("go"),2,1.2);},
   onPass(t){if(Math.random()<.5)this.say(pickLine("pass").replace("{t}",TIERS[t].name),1,1);},
   onBreach(i){if(LINES.strata[i]&&Math.random()<.75)this.say(LINES.strata[i],2);},
   onLandmark(l){this.say(l.q||("Passed "+l.s+"!"),3);this.emote("spark",3);},
   onLand(res){
-    if(res.tier<0){if(res.timeUp){this.setMood("sleep",3.5);this.emote("zzz",3);this.say(pickLine("timeup"),4);}else{this.setMood("dizzy",3);this.say(pickLine("dry"),4);}if(S.mode==="endless")setTimeout(()=>this.say(pickLine("bit"),4),1600);return;}
+    if(res.tier<0){if(!(res.misses&&res.misses.length)){this.setMood("sleep",3.5);this.emote("zzz",3);this.say(pickLine("timeup"),4);}else{this.setMood("dizzy",3);this.say(pickLine("dry"),4);}if(S.mode==="endless")setTimeout(()=>this.say(pickLine("bit"),4),1600);return;}
     const t=res.tier;this.say(pickLine("land"+t),4);
     if(t===0){this.setMood("meh",2.8);}
     else if(t===1){this.setMood("happy",2.5);}

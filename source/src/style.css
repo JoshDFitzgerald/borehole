@@ -74,6 +74,26 @@ button{font:inherit;color:inherit;cursor:pointer}
   padding-top:28px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 14px);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .dock.away{transform:translateY(140%)}
 .dock form{max-width:640px;margin:0 auto;display:flex;gap:10px;align-items:center}
+/* guess feedback: try again / did you mean */
+.fb{max-width:640px;margin:0 auto 9px;display:flex;flex-direction:column;gap:7px}
+.fb:empty{display:none}
+.fbm{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 10px 9px 12px;border-radius:12px;background:var(--panel-solid);border:1px solid var(--line);font:500 .92rem/1.35 var(--body);box-shadow:0 10px 26px rgba(0,0,0,.4);animation:fbin .24s cubic-bezier(.2,.9,.3,1)}
+.fbm .msg{flex:1;min-width:11em}
+.fbm q{font-family:var(--mono);font-size:.9em;quotes:"“" "”"}
+.fbm.miss{border-color:rgba(242,123,127,.6)}
+.fbm.miss b{color:var(--miss);white-space:nowrap}
+.fbm .ic{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--miss);color:#2a1012;font:800 .78rem var(--body);flex:none}
+.fbm.ask{border-color:rgba(245,185,65,.7);box-shadow:0 10px 26px rgba(0,0,0,.4),0 0 0 3px rgba(245,185,65,.12)}
+.fbm.ask b{color:var(--lamp)}
+.fbm .mini{border:0;border-radius:9px;padding:8px 16px;font:700 .88rem var(--body);background:var(--lamp);color:var(--on-lamp);cursor:pointer;box-shadow:0 3px 0 #9a6a12}
+.fbm .mini:active{transform:translateY(2px);box-shadow:0 1px 0 #9a6a12}
+.fbm .mini.alt{background:transparent;color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.tried{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap;font:500 .8rem var(--mono);color:var(--muted);padding:0 4px}
+.tried>span:first-child{font:600 .68rem var(--body);letter-spacing:.14em;text-transform:uppercase}
+.tried s{text-decoration-color:var(--miss);text-decoration-thickness:2px;color:#cdbfb2}
+.tried .giveup{margin-left:auto;background:none;border:0;color:var(--muted);font:600 .8rem var(--body);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px 2px}
+.tried .giveup:hover{color:var(--ink)}
+@keyframes fbin{from{opacity:0;transform:translateY(8px)}}
 .timer{position:relative;width:50px;height:50px;flex:none}
 .timer svg{transform:rotate(-90deg)}
 .timer circle{fill:none;stroke-width:4}
@@ -85,6 +105,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .dock input{flex:1;min-width:0;font:500 1.05rem var(--mono);padding:13px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel-solid);color:var(--ink)}
 .dock input:focus{outline:none;border-color:var(--lamp);box-shadow:0 0 0 4px rgba(245,185,65,.15)}
 .dock input.nudge{animation:nudge .35s}
+.dock input.bad{border-color:var(--miss);box-shadow:0 0 0 4px rgba(242,123,127,.15)}
 @keyframes nudge{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .btn{border:0;border-radius:12px;padding:13px 20px;font:800 1.15rem var(--display);letter-spacing:.12em;text-transform:uppercase;background:var(--lamp);color:var(--on-lamp);white-space:nowrap;box-shadow:0 4px 0 #9a6a12}
 .btn:active{transform:translateY(2px);box-shadow:0 2px 0 #9a6a12}
@@ -152,4 +173,4 @@ button{font:inherit;color:inherit;cursor:pointer}
   .stamp{font-size:1.35rem}
 }
 @media (max-width:380px){.hud .gauge .s{display:none}}
-@media (prefers-reduced-motion:reduce){.card,.dock,.sheet,.bubble,.toast{transition:none}.stamp,.banner.go,.flash.go,.pip.now,.card.enter{animation:none}}
+@media (prefers-reduced-motion:reduce){.fbm{animation:none}.card,.dock,.sheet,.bubble,.toast{transition:none}.stamp,.banner.go,.flash.go,.pip.now,.card.enter{animation:none}}
