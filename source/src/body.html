@@ -1,0 +1,41 @@
+<canvas id="cv" aria-label="Cross-section of your borehole"></canvas>
+<div class="flash" id="flash"></div>
+<div class="hud" id="hud">
+  <div class="hl">
+    <button class="iconbtn" id="helpBtn" type="button" aria-label="How to play">?</button>
+    <div class="gauge"><div class="l">Depth</div><div class="v"><span id="hDepth">0</span><small>m</small></div><div class="s" id="hNext">Next: Deepest metro station</div></div>
+  </div>
+  <div class="progress"><div class="pips" id="pips"></div><small id="progTxt">Prompt 1 of 7</small></div>
+  <div class="hr">
+    <div class="gauge scorebox"><div class="l">Score</div><div class="v" id="hScore">0</div><div class="s" id="hTemp">Rock 12°C</div></div>
+    <button class="iconbtn" id="sndBtn" type="button" aria-label="Sound on" aria-pressed="true">
+      <svg id="sndOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+      <svg id="sndOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
+    </button>
+  </div>
+</div>
+<section class="card mini" id="card" aria-live="polite"></section>
+<div class="banner" id="banner" aria-hidden="true"><span id="bannerSub"></span><b id="bannerTxt"></b></div>
+<div class="toast" id="toast" role="status"></div>
+<div class="bubble" id="bubble" role="status"><span class="who">Digby</span><span id="bubbleTxt"></span></div>
+<div class="dock" id="dock">
+  <form id="f" autocomplete="off">
+    <div class="timer" id="timer"><svg width="50" height="50" viewBox="0 0 50 50" aria-hidden="true"><circle class="bg" cx="25" cy="25" r="21"/><circle class="fg" id="ring" cx="25" cy="25" r="21"/></svg><span id="secs" aria-label="seconds left">25</span></div>
+    <input type="text" id="guess" aria-label="Your answer" placeholder="Type one answer" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+    <button class="btn" type="submit">Drill</button>
+  </form>
+</div>
+<div class="sheet" id="sheet"><div class="in" id="sheetIn"></div></div>
+<div class="modal" id="modal" hidden><div class="in" role="dialog" aria-labelledby="mh" aria-modal="true">
+  <h3 id="mh">How to drill</h3>
+  <ul>
+    <li>Every prompt has a hidden list of answers, ranked by how often people give them.</li>
+    <li>You get one answer and 25 seconds. Your drill bores down from wherever you are, to the line your answer belongs to.</li>
+    <li>Common answers stop shallow. The single rarest answer on each list is the Diamond.</li>
+    <li>An answer that isn't on the list is a dry hole: the drill doesn't move.</li>
+    <li>Seven prompts make a hole. After that you can keep drilling in endless mode until you burn through three drill bits.</li>
+  </ul>
+  <div class="ladder" id="ladder"></div>
+  <p>Digby the mole digs alongside you. Tap Digby if you need moral support. There are <b id="bankN">0</b> prompts in the bank, and you won't see one twice until you've played through most of them.</p>
+  <div class="rowx"><span class="eb2">Can you beat the Kola Superdeep Borehole?</span><button class="btn" id="closeHelp" type="button">Got it</button></div>
+</div></div>
